@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drink Match 3 Game</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f1e8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #553c2b;
+        }
+        
+        h1 {
+            color: #8b5a2b;
+            margin-bottom: 10px;
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            width: 400px;
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .score, .target {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 2px;
+            background-color: #d0b49f;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: #f9ebd7;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        
+        .cell:hover {
+            background-color: #f0e0c0;
+            transform: scale(1.05);
+        }
+        
+        .cell.selected {
+            background-color: #e6c9a8;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px #8b5a2b;
+        }
+        
+        .win-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 2em;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        
+        .win-message.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        button {
+            background-color: #8b5a2b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #6d4522;
+        }
+        
+        .drink-emoji {
+            font-size: 32px;
+        }
+        
+        .matched {
+            animation: matchAnimation 0.5s;
+        }
+        
+        @keyframes matchAnimation {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); }
+        }
+        
+        .falling {
+            transition: transform 0.3s ease-in;
+        }
+        
+        .instructions {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            max-width: 400px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .instructions h3 {
+            color: #8b5a2b;
+            margin-top: 0;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .matcha-bonus {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1.5em;
+            font-weight: bold;
+            z-index: 50;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+        
+        .matcha-bonus.active {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            animation: rotateBounce 1s;
+        }
+        
+        @keyframes rotateBounce {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+            20% { transform: translate(-50%, -50%) scale(1.2) rotate(10deg); }
+            40% { transform: translate(-50%, -50%) scale(0.9) rotate(-10deg); }
+            60% { transform: translate(-50%, -50%) scale(1.1) rotate(5deg); }
+            80% { transform: translate(-50%, -50%) scale(0.95) rotate(-5deg); }
+            100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Drink Match 3 Game</h1>
+    
+    <div class="game-info">
+        <div class="score">Score: <span id="score">0</span></div>
+        <div class="target">Target: 100</div>
+    </div>
+    
+    <div class="game-board" id="game-board"></div>
+    
+    <div class="instructions">
+        <h3>How to Play:</h3>
+        <ul>
+            <li>Swap adjacent drinks to create matches of 3 or more.</li>
+            <li>3 matched drinks = 3 points</li>
+            <li>4 matched drinks = 8 points</li>
+            <li>5+ matched drinks = 15 points</li>
+            <li><strong>Bonus:</strong> Matches with matcha earn 2x points!</li>
+            <li>Reach 100 points to win!</li>
+        </ul>
+    </div>
+    
+    <div class="matcha-bonus" id="matcha-bonus">
+        Matcha made in heaven! 2x points!
+    </div>
+    
+    <div class="win-message" id="win-message">
+        <h2>🎉 Congratulations! 🎉</h2>
+        <p>You've reached 100 points!</p>
+        <div style="font-size: 48px;">🧋☕️🍵🫖🧃</div>
+        <button id="play-again">Play Again</button>
+    </div>
+    
+    <script>
+        // Game configuration
+        const CONFIG = {
+            boardSize: 8,
+            targetScore: 100,
+            drinkTypes: [
+                { symbol: '🧋', name: 'boba' },
+                { symbol: '☕️', name: 'coffee' },
+                { symbol: '🍵', name: 'matcha' },
+                { symbol: '🫖', name: 'tea' },
+                { symbol: '🧃', name: 'apple' }
+            ],
+            points: {
+                3: 3,  // 3 matches = 3 points
+                4: 8,  // 4 matches = 8 points
+                5: 15  // 5+ matches = 15 points
+            },
+            matchaPuns: [
+                "Matcha made in heaven! 2x points!",
+                "That's a matcha-rific move! 2x points!",
+                "You're matcha-talented! 2x points!",
+                "This matcha is un-tea-lievable! 2x points!",
+                "You're matcha-gnificent! 2x points!",
+                "What a matcha-ificent match! 2x points!",
+                "You're brewing up success! 2x points!",
+                "That's matcha-gical! 2x points!",
+                "We're a perfect matcha! 2x points!",
+                "Matcha points for you! 2x score!"
+            ]
+        };
+        
+        // Game state
+        const gameState = {
+            board: [],
+            score: 0,
+            selectedCell: null,
+            canMove: true
+        };
+        
+        // DOM elements
+        const boardElement = document.getElementById('game-board');
+        const scoreElement = document.getElementById('score');
+        const winMessageElement = document.getElementById('win-message');
+        const playAgainButton = document.getElementById('play-again');
+        const matchaBonusElement = document.getElementById('matcha-bonus');
+        
+        // Initialize the game
+        function initGame() {
+            gameState.score = 0;
+            gameState.selectedCell = null;
+            gameState.canMove = true;
+            
+            updateScore();
+            createBoard();
+            
+            // Check for initial matches and resolve them
+            setTimeout(() => {
+                resolveMatches();
+            }, 500);
+        }
+        
+        // Create the game board
+        function createBoard() {
+            boardElement.innerHTML = '';
+            gameState.board = [];
+            
+            // Initialize with random drinks
+            for (let row = 0; row < CONFIG.boardSize; row++) {
+                gameState.board[row] = [];
+                for (let col = 0; col < CONFIG.boardSize; col++) {
+                    const randomType = Math.floor(Math.random() * CONFIG.drinkTypes.length);
+                    gameState.board[row][col] = CONFIG.drinkTypes[randomType];
+                    
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.innerHTML = `<span class="drink-emoji">${CONFIG.drinkTypes[randomType].symbol}</span>`;
+                    
+                    cell.addEventListener('click', handleCellClick);
+                    
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+        
+        // Handle cell click
+        function handleCellClick(event) {
+            if (!gameState.canMove) return;
+            
+            const cell = event.currentTarget;
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            
+            if (gameState.selectedCell === null) {
+                // First selection
+                gameState.selectedCell = { row, col, element: cell };
+                cell.classList.add('selected');
+            } else {
+                // Second selection - check if adjacent
+                const selectedRow = gameState.selectedCell.row;
+                const selectedCol = gameState.selectedCell.col;
+                
+                const isAdjacent = (
+                    (Math.abs(row - selectedRow) === 1 && col === selectedCol) ||
+                    (Math.abs(col - selectedCol) === 1 && row === selectedRow)
+                );
+                
+                if (isAdjacent) {
+                    // Swap the drinks
+                    swapDrinks(selectedRow, selectedCol, row, col);
+                    gameState.selectedCell.element.classList.remove('selected');
+                    gameState.selectedCell = null;
+                } else {
+                    // Not adjacent, make this the new selection
+                    gameState.selectedCell.element.classList.remove('selected');
+                    gameState.selectedCell = { row, col, element: cell };
+                    cell.classList.add('selected');
+                }
+            }
+        }
+        
+        // Swap drinks between two cells
+        function swapDrinks(row1, col1, row2, col2) {
+            gameState.canMove = false;
+            
+            // Swap in the data model
+            const temp = gameState.board[row1][col1];
+            gameState.board[row1][col1] = gameState.board[row2][col2];
+            gameState.board[row2][col2] = temp;
+            
+            // Update the UI
+            const cell1 = document.querySelector(`[data-row="${row1}"][data-col="${col1}"]`);
+            const cell2 = document.querySelector(`[data-row="${row2}"][data-col="${col2}"]`);
+            
+            const drink1 = cell1.querySelector('.drink-emoji');
+            const drink2 = cell2.querySelector('.drink-emoji');
+            
+            drink1.textContent = gameState.board[row1][col1].symbol;
+            drink2.textContent = gameState.board[row2][col2].symbol;
+            
+            // Check for matches after swap
+            setTimeout(() => {
+                const hasMatches = checkForMatches();
+                
+                if (!hasMatches) {
+                    // Swap back if no matches
+                    const tempBack = gameState.board[row1][col1];
+                    gameState.board[row1][col1] = gameState.board[row2][col2];
+                    gameState.board[row2][col2] = tempBack;
+                    
+                    drink1.textContent = gameState.board[row1][col1].symbol;
+                    drink2.textContent = gameState.board[row2][col2].symbol;
+                    
+                    gameState.canMove = true;
+                } else {
+                    resolveMatches();
+                }
+            }, 300);
+        }
+        
+        // Check for matches on the board
+        function checkForMatches() {
+            const horizontalMatches = findHorizontalMatches();
+            const verticalMatches = findVerticalMatches();
+            
+            return horizontalMatches.length > 0 || verticalMatches.length > 0;
+        }
+        
+        // Find horizontal matches (3+ in a row)
+        function findHorizontalMatches() {
+            const matches = [];
+            
+            for (let row = 0; row < CONFIG.boardSize; row++) {
+                let currentMatch = [{ row, col: 0 }];
+                
+                for (let col = 1; col < CONFIG.boardSize; col++) {
+                    const currentType = gameState.board[row][col-1].name;
+                    const nextType = gameState.board[row][col].name;
+                    
+                    if (currentType === nextType) {
+                        currentMatch.push({ row, col });
+                    } else {
+                        if (currentMatch.length >= 3) {
+                            matches.push([...currentMatch]);
+                        }
+                        currentMatch = [{ row, col }];
+                    }
+                }
+                
+                if (currentMatch.length >= 3) {
+                    matches.push([...currentMatch]);
+                }
+            }
+            
+            return matches;
+        }
+        
+        // Find vertical matches (3+ in a column)
+        function findVerticalMatches() {
+            const matches = [];
+            
+            for (let col = 0; col < CONFIG.boardSize; col++) {
+                let currentMatch = [{ row: 0, col }];
+                
+                for (let row = 1; row < CONFIG.boardSize; row++) {
+                    const currentType = gameState.board[row-1][col].name;
+                    const nextType = gameState.board[row][col].name;
+                    
+                    if (currentType === nextType) {
+                        currentMatch.push({ row, col });
+                    } else {
+                        if (currentMatch.length >= 3) {
+                            matches.push([...currentMatch]);
+                        }
+                        currentMatch = [{ row, col }];
+                    }
+                }
+                
+                if (currentMatch.length >= 3) {
+                    matches.push([...currentMatch]);
+                }
+            }
+            
+            return matches;
+        }
+        
+        // Show matcha bonus message
+        function showMatchaBonus() {
+            // Get a random matcha pun
+            const randomPun = CONFIG.matchaPuns[Math.floor(Math.random() * CONFIG.matchaPuns.length)];
+            matchaBonusElement.textContent = randomPun;
+            
+            // Show and animate
+            matchaBonusElement.classList.add('active');
+            
+            // Hide after 2 seconds
+            setTimeout(() => {
+                matchaBonusElement.classList.remove('active');
+            }, 2000);
+        }
+        
+        // Check if a match contains matcha
+        function containsMatcha(match) {
+            for (const pos of match) {
+                if (gameState.board[pos.row][pos.col].name === 'matcha') {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Resolve all matches on the board
+        function resolveMatches() {
+            const horizontalMatches = findHorizontalMatches();
+            const verticalMatches = findVerticalMatches();
+            
+            const allMatches = [...horizontalMatches, ...verticalMatches];
+            
+            if (allMatches.length === 0) {
+                gameState.canMove = true;
+                return;
+            }
+            
+            let matchaBonus = false;
+            
+            // Award points for each match
+            allMatches.forEach(match => {
+                // Animate the matched cells
+                match.forEach(pos => {
+                    const cell = document.querySelector(`[data-row="${pos.row}"][data-col="${pos.col}"]`);
+                    cell.classList.add('matched');
+                    setTimeout(() => {
+                        cell.classList.remove('matched');
+                    }, 500);
+                });
+                
+                // Award points based on match length
+                let points = 0;
+                const matchLength = match.length;
+                
+                if (matchLength >= 5) {
+                    points = CONFIG.points[5];
+                } else {
+                    points = CONFIG.points[matchLength];
+                }
+                
+                // Check for matcha bonus
+                const hasMatcha = containsMatcha(match);
+                if (hasMatcha) {
+                    points *= 2; // Double points for matcha
+                    matchaBonus = true;
+                }
+                
+                gameState.score += points;
+                updateScore();
+            });
+            
+            // Show matcha bonus message if applicable
+            if (matchaBonus) {
+                showMatchaBonus();
+            }
+            
+            // Clear the matches and drop new drinks
+            setTimeout(() => {
+                clearMatches(allMatches);
+                dropDrinks();
+                
+                // Check for new matches after dropping
+                setTimeout(() => {
+                    const hasNewMatches = checkForMatches();
+                    if (hasNewMatches) {
+                        resolveMatches();
+                    } else {
+                        gameState.canMove = true;
+                    }
+                }, 500);
+            }, 500);
+        }
+        
+        // Clear matched drinks from the board
+        function clearMatches(matches) {
+            // Create a set of cells to clear (to avoid duplicates)
+            const cellsToClear = new Set();
+            
+            matches.forEach(match => {
+                match.forEach(pos => {
+                    cellsToClear.add(`${pos.row},${pos.col}`);
+                });
+            });
+            
+            // Clear the cells
+            cellsToClear.forEach(key => {
+                const [row, col] = key.split(',').map(Number);
+                gameState.board[row][col] = null;
+            });
+        }
+        
+        // Drop drinks to fill empty spaces
+        function dropDrinks() {
+            // Process column by column
+            for (let col = 0; col < CONFIG.boardSize; col++) {
+                // Count empty spaces in each column
+                let emptySpaces = 0;
+                
+                // Process from bottom to top
+                for (let row = CONFIG.boardSize - 1; row >= 0; row--) {
+                    if (gameState.board[row][col] === null) {
+                        emptySpaces++;
+                    } else if (emptySpaces > 0) {
+                        // Move drink down
+                        const newRow = row + emptySpaces;
+                        gameState.board[newRow][col] = gameState.board[row][col];
+                        gameState.board[row][col] = null;
+                        
+                        // Animate the fall
+                        const cell = document.querySelector(`[data-row="${newRow}"][data-col="${col}"]`);
+                        const drink = document.querySelector(`[data-row="${row}"][data-col="${col}"] .drink-emoji`);
+                        
+                        cell.innerHTML = `<span class="drink-emoji">${gameState.board[newRow][col].symbol}</span>`;
+                    }
+                }
+                
+                // Fill the top empty spaces with new drinks
+                for (let row = emptySpaces - 1; row >= 0; row--) {
+                    const randomType = Math.floor(Math.random() * CONFIG.drinkTypes.length);
+                    gameState.board[row][col] = CONFIG.drinkTypes[randomType];
+                    
+                    const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                    cell.innerHTML = `<span class="drink-emoji">${CONFIG.drinkTypes[randomType].symbol}</span>`;
+                }
+            }
+        }
+        
+        // Update the score display
+        function updateScore() {
+            scoreElement.textContent = gameState.score;
+            
+            // Check for win condition
+            if (gameState.score >= CONFIG.targetScore) {
+                setTimeout(showWinMessage, 1000);
+            }
+        }
+        
+        // Show the win message
+        function showWinMessage() {
+            winMessageElement.classList.add('active');
+        }
+        
+        // Hide the win message
+        function hideWinMessage() {
+            winMessageElement.classList.remove('active');
+        }
+        
+        // Event Listeners
+        playAgainButton.addEventListener('click', () => {
+            hideWinMessage();
+            initGame();
+        });
+        
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>
